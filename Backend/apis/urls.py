@@ -1,11 +1,9 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from apis import views
+from rest_framework import routers
 
-router = DefaultRouter()
-router.register(r'questions', views.QuestionViewSet, basename='question')
-router.register(r'responses', views.ModelResponseViewSet, basename='modelresponse')
+router = routers.DefaultRouter()
+router.register(r'questions', views.QuestionViewSet)
+router.register(r'responses', views.ModelResponseViewSet)
 
-urlpatterns = [
-    path('', include(router.urls)),
-]
+urlpatterns = router.urls

@@ -6,6 +6,7 @@ class ModelResponseSerializer(serializers.ModelSerializer):
         model = ModelResponse
         fields = ['id', 'model_name', 'score', 'created_at', 'response_text', 'critique', 'final_answer']
 
+
 class QuestionSerializer(serializers.ModelSerializer):
     # Nested serializer to include responses with the question
     responses = ModelResponseSerializer(many=True, read_only=True)
