@@ -1,6 +1,11 @@
-from django.urls import path
-from apis.views import AgentQueryView
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from apis import views
+
+router = DefaultRouter()
+router.register(r'questions', views.QuestionViewSet, basename='question')
+router.register(r'responses', views.ModelResponseViewSet, basename='modelresponse')
 
 urlpatterns = [
-    path('query/', AgentQueryView.as_view(), name='agent-query'),
+    path('', include(router.urls)),
 ]
