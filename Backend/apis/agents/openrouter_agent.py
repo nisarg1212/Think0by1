@@ -1,0 +1,4 @@
+class OpenRouterAgent(BaseAgent):
+    pass
+    
+    

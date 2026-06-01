@@ -1,0 +1,2 @@
+class NvidiaAgent(BaseAgent):
+    pass

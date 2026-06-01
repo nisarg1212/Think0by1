@@ -1,0 +1,2 @@
+class GeminiAgent(BaseAgent):
+    pass
