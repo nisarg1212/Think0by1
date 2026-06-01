@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Think0by1 - API Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        h1,
+        h2 {
+            color: #2c3e50;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .question-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+
+        .question-item:last-child {
+            border-bottom: none;
+        }
+
+        .responses-list {
+            margin-left: 20px;
+            background: #f0f4f8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .response-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+        }
+
+        .response-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .tag {
+            background: #e67e22;
+            color: white;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Think0by1 API Client</h1>
+    <p>A simple dashboard to make LLMS think and review to lead us to the optimal ans.</p>
+
+    <!-- SECTION 1: Create a Question -->
+    <div class="card">
+        <h2>Submit a New Question</h2>
+        <div class="form-group">
+            <label for="prompt">Prompt / Question:</label>
+            <textarea id="prompt" rows="3" placeholder="Enter your prompt..."></textarea>
+        </div>
+        <button onclick="createQuestion()">Submit Question</button>
+    </div>
+
+    <!-- SECTION 2: Display Questions and Responses -->
+    <div class="card">
+        <h2>All Questions & Responses</h2>
+        <button onclick="fetchQuestions()" style="background-color: #2ecc71;">Refresh List</button>
+        <div id="questions-list" style="margin-top: 20px;">
+            <!-- Questions will be injected here by JavaScript -->
+            Loading questions...
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000/api";
+
+        // Fetch and render the list of questions
+        async function fetchQuestions() {
+            const listDiv = document.getElementById("questions-list");
+            try {
+                const response = await fetch(`${API_BASE}/questions/`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    listDiv.innerHTML = "<p>No questions submitted yet.</p>";
+                    return;
+                }
+
+                listDiv.innerHTML = "";
+                data.forEach(q => {
+                    let responsesHTML = "";
+                    if (q.responses && q.responses.length > 0) {
+                        responsesHTML = `<div class="responses-list"><strong>Model Answers:</strong>`;
+                        q.responses.forEach(resp => {
+                            responsesHTML += `
+                                <div class="response-item">
+                                    <span class="tag">${resp.model_name}</span> 
+                                    <strong>Score:</strong> ${resp.score !== null ? resp.score : 'N/A'}<br>
+                                    <p style="margin: 5px 0 0 0;">${resp.response_text}</p>
+                                </div>
+                            `;
+                        });
+                        responsesHTML += `</div>`;
+                    } else {
+                        responsesHTML = `<p style="margin-left: 20px; font-style: italic; color: #777;">No responses generated yet.</p>`;
+                    }
+
+                    const item = document.createElement("div");
+                    item.className = "question-item";
+                    item.innerHTML = `
+                        <h3>Question #${q.id}: ${q.prompt}</h3>
+                        <p><strong>Critique:</strong> ${q.critique || 'None'} | <strong>Final Answer:</strong> ${q.final_answer || 'None'}</p>
+                        ${responsesHTML}
+                    `;
+                    listDiv.appendChild(item);
+                });
+            } catch (error) {
+                listDiv.innerHTML = `<p style="color: red;">Error connecting to API: ${error.message}</p>`;
+            }
+        }
+
+        // Post a new question to the API
+        async function createQuestion() {
+            const promptInput = document.getElementById("prompt");
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) {
+                alert("Please enter a prompt!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/questions/`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        critique: "",
+                        final_answer: ""
+                    })
+                });
+
+                if (response.ok) {
+                    promptInput.value = ""; // Clear input
+                    fetchQuestions(); // Refresh list
+                } else {
+                    const errData = await response.json();
+                    alert("Error: " + JSON.stringify(errData));
+                }
+            } catch (error) {
+                alert("Failed to submit question: " + error.message);
+            }
+        }
+
+        // Initial fetch when page loads
+        fetchQuestions();
+    </script>
+</body>
+
+</html>
