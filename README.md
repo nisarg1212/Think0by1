@@ -1,6 +1,6 @@
 # Think0by1: Multi-Agent Collaborative Peer-Review Network
 
-Think0by1 is a high-performance **Multi-Agent Orchestration Platform** built with **Django** and **Django REST Framework (DRF)**. Instead of relying on a single AI model's output, it implements a **democratic round-robin peer-review consensus system** where multiple LLM models (Gemini, NVIDIA Llama, and OpenRouter models) collaborate, evaluate, critique, and correct each other's drafts to produce a highly refined final answer.
+Think0by1 is a high-performance **Multi-Agent Orchestration Platform** built with **Django** and **Django REST Framework (DRF)**. Instead of relying on a single AI model's output, it implements a **democratic round-robin peer-review consensus system** where multiple LLM models (like ie Gemini, NVIDIA Llama, and OpenRouter models) collaborate, evaluate, critique, and correct each other's drafts to produce a highly refined final answer.
 
 This project is a showcase of clean OOP design, Django ORM database state management, REST API architecture, and advanced AI agent workflows.
 
