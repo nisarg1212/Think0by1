@@ -139,7 +139,7 @@ Simply double-click `Frontend/index.html` to open it in your browser, or serve i
 
 ---
 
-## 📈 Key Learnings & Engineering Challenges
+## 📈 Key Concepts & Engineering Challenges
 
 1.  **Polymorphism in LLM APIs:** By designing an abstract `BaseAgent` class, all model integrations (Google GenAI SDK vs. OpenAI HTTP standard client) are represented identically, making the orchestrator completely decoupled from client implementation details.
 2.  **State Consistency & Cascades:** Implemented a robust 1-to-many relationship where model responses are bound to their parent question using Django's ORM, leveraging `related_name='responses'` to support nested JSON serialization natively.
