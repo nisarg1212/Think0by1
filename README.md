@@ -1,22 +1,21 @@
-# Think0by1: Multi-Agent Collaborative Peer-Review Network
+# Think0by1: Multi-Agent Collaborative StateGraph Engine
 
-Think0by1 is a high-performance **Multi-Agent Orchestration Platform** built with **Django** and **Django REST Framework (DRF)**. Instead of relying on a single AI model's output, it implements a **democratic round-robin peer-review consensus system** where multiple LLM models (like ie Gemini, NVIDIA Llama, and OpenRouter models) collaborate, evaluate, critique, and correct each other's drafts to produce a highly refined final answer.
+Think0by1 is an asynchronous, high-performance **Multi-Agent Orchestration Platform** built with **Django**, **Django REST Framework (DRF)**, and **Django Q2**. 
 
-This project is a showcase of clean OOP design, Django ORM database state management, REST API architecture, and advanced AI agent workflows.
+Instead of relying on a single AI model's output or a rigid linear script, it implements an extensible **StateGraph Orchestration Engine**. Multiple LLM models (Gemini, NVIDIA Llama, and OpenRouter models) collaborate, evaluate, critique, and correct each other's drafts through structured peer-review cycles in the background, blending their collective strengths into a highly refined final answer.
 
 ---
 
 ## 🚀 Key Features
 
-*   **Round-Robin Peer Review (Consensus Mechanism):** 
-    *   **Gemini** reviews and critiques **NVIDIA Llama's** response.
-    *   **NVIDIA Llama** reviews and critiques **OpenRouter's** response.
-    *   **OpenRouter** reviews and critiques **Gemini's** response.
-*   **Criticism & Self-Correction Loop:** If any model's peer-review score is below the threshold (`7.0 / 10.0`), the system triggers a correction loop, sending the specific peer critique back to the original model for self-correction.
-*   **Consensus Blending:** Once all drafts are finalized, the system queries a master model (Gemini) to edit and consolidate all three models' strengths into a single, cohesive `final_answer`.
-*   **Fault-Tolerant Fallback System:** Built with first-principles robustness. If an external model's API key is missing or fails due to network issues, the orchestrator catches the exception gracefully, notes the failure in the database, and falls back to active models (like Gemini) to complete the review cycle without crashing the web server.
-*   **Django REST API Backend:** Exposes fully serialized CRUD endpoints for questions and responses using DRF ViewSets and Routers.
-*   **Interactive Frontend:** A clean, lightweight Vanilla JavaScript dashboard that communicates with the API via the browser's native `fetch()` API.
+*   **StateGraph Orchestration Engine:** Decouples execution logic into pure, environment-agnostic nodes and edges. Features copy-on-write immutable states (`OrchestrationState`) to cleanly manage history and prevent side-effects.
+*   **Asynchronous Background Processing (Django Q2):** HTTP requests return immediately with zero blocking. Heavy multi-agent LLM reasoning is offloaded to a background task cluster using the local Django ORM broker (no Redis configuration required).
+*   **Round-Robin Peer Review:**
+    *   **Gemini** (Optimistic Innovator) reviews and critiques **NVIDIA Llama's** draft.
+    *   **NVIDIA Llama** (Strict Security Auditor) reviews and critiques **OpenRouter's** draft.
+    *   **OpenRouter** (Performance Optimizer) reviews and critiques **Gemini's** draft.
+*   **Structured Outputs (Pydantic):** Deprecates brittle regex string parsing. Leverages `Pydantic` schemas for peer evaluation results (`score` and `critique`) with a robust lenient fallback mechanism.
+*   **Real-time UX Auto-Polling:** The lightweight Vanilla JavaScript frontend automatically detects pending questions, displays a flashing **"Thinking..."** state, polls progress in the background, and stops polling once all answers are synthesized.
 
 ---
 
@@ -27,37 +26,39 @@ sequenceDiagram
     autonumber
     actor User as Frontend User
     participant V as Django ViewSet (views.py)
-    participant O as Orchestrator (orchestrator.py)
-    participant J as ResponseJudge (judge.py)
+    participant Q as Django Q (tasks.py)
+    participant GE as GraphEngine (engine.py)
+    participant GD as GraphDefinition (graph.py)
     participant DB as SQLite Database
 
     User->>V: POST /api/questions/ { prompt }
     V->>DB: Save Question (status: Pending)
-    V->>O: run(question_id)
-    Note over O: Queries Gemini, Llama, & OpenRouter for drafts
-    O->>J: Gemini evaluates Llama draft
-    J-->>O: Returns score & critique
-    O->>J: Llama evaluates OpenRouter draft
-    J-->>O: Returns score & critique
-    O->>J: OpenRouter evaluates Gemini draft
-    J-->>O: Returns score & critique
-    O->>DB: Save ModelResponses (drafts, scores, critiques)
-    Note over O: Runs Correction Loop if score < 7.0
-    O->>O: Re-queries failed models with critiques
-    O->>DB: Save final_answers
-    O->>O: Blends outputs into a single consolidated answer
-    O->>DB: Save Question final_answer
-    V-->>User: Returns 200 OK + full JSON payload
+    V->>Q: Dispatch run_orchestration_task(question_id)
+    V-->>User: Return 201 Created (Instant Response)
+    
+    activate Q
+    Note over Q: Background Worker Running
+    Q->>GD: OrchestrationGraph.run()
+    GD->>GE: execute(initial_state, context)
+
+    GE->>GE: Node [draft] (Parallel LLM queries)
+    GE->>DB: persist_node_state (Drafts saved)
+    
+    GE->>GE: Node [review] (Parallel evaluations)
+    GE->>DB: persist_node_state (Scores saved)
+    
+    GE->>GE: Node [correct] (Self-correction if score < 7.0)
+    GE->>DB: persist_node_state (Corrections saved)
+    
+    GE->>GE: Node [synthesize] (Consensus Blending)
+    GE->>DB: persist_node_state (Final answer saved)
+    deactivate Q
+
+    loop Auto-Polling
+        User->>V: GET /api/questions/
+        V-->>User: Returns state (Updates UI to 'Completed' when final_answer exists)
+    end
 ```
-
----
-
-## 🛠️ Tech Stack
-
-*   **Backend:** Python 3.12+, Django, Django REST Framework (DRF), django-cors-headers
-*   **AI Integrations:** Google GenAI SDK (`google-genai`), OpenAI Python Client (for NVIDIA NIMs and OpenRouter compatibility)
-*   **Database:** SQLite (Django ORM managed)
-*   **Frontend:** HTML5, CSS3, Vanilla JavaScript (Fetch API, DOM Manipulation)
 
 ---
 
@@ -66,7 +67,7 @@ sequenceDiagram
 ```
 Think0by1/
 ├── .gitignore                      # Git ignore rules for Django, Python, OS, & IDEs
-├── README.md                       # This project portfolio guide
+├── README.md                       # This project guide
 ├── DEVELOPER_GUIDE.md              # Detailed walkthrough of coding concepts
 │
 ├── Backend/                        # Django backend root
@@ -74,27 +75,38 @@ Think0by1/
 │   ├── db.sqlite3                  # Local SQLite database
 │   │
 │   ├── think0by_django_folder/     # Django configuration folder
-│   │   ├── settings.py             # App registration, middleware, and CORS config
+│   │   ├── settings.py             # App registrations, CORS, & Django Q cluster settings
 │   │   └── urls.py                 # Project-level URL patterns
 │   │
 │   └── apis/                       # Principal Django App for API services
 │       ├── models.py               # Question and ModelResponse DB schemas
 │       ├── serializer.py           # Nested serializations for API communication
-│       ├── views.py                # ModelViewSets and lifecycle overrides
+│       ├── views.py                # ModelViewSets with non-blocking background dispatch
+│       ├── tasks.py                # Django Q background worker tasks
+│       ├── schemas.py              # Pydantic validation schemas
+│       ├── prompts.py              # Centralized PromptManager and Persona registry
 │       ├── urls.py                 # App-specific URL mapping
 │       │
 │       ├── agents/                 # Standardized LLM wrappers
-│       │   ├── base_agent.py       # Abstract Base Class for polymorphism
+│       │   ├── base_agent.py       # Abstract Base Class supporting async query threads
 │       │   ├── gemini_agent.py     # Gemini client SDK connection
 │       │   ├── nvidia_agent.py     # NVIDIA NIM standard OpenAI client
-│       │   └── openrouter_agent.py # OpenRouter standard OpenAI client
+│       │   └── openrouter_agent.py # OpenRouter auto-free agent client
 │       │
-│       └── services/               # Core Orchestration Logic
-│           ├── judge.py            # Peer reviewer prompt instructions and JSON parsers
-│           └── orchestrator.py     # Round-robin reviewer logic and consensus generator
+│       ├── services/               # Legacy Services
+│       │   ├── judge.py            # Peer reviewer scoring validation
+│       │   └── orchestrator.py     # Legacy sequential orchestrator
+│       │
+│       └── engine/                 # StateGraph Orchestration Engine
+│           ├── state.py            # Immutable OrchestrationState definitions
+│           ├── context.py          # Decoupled ExecutionContext
+│           ├── graph_def.py        # Declarative GraphDefinition builder
+│           ├── engine.py           # execution logic runner
+│           ├── nodes.py            # Pure async node functions (draft, review, etc.)
+│           └── graph.py            # Concrete Think0by1 Graph & DB persistence hooks
 │
 └── Frontend/                       # Frontend application
-    └── index.html                  # Dashboard UI (Fetch API client)
+    └── index.html                  # Dashboard UI with auto-polling & flashing status
 ```
 
 ---
@@ -115,7 +127,7 @@ python -m venv .venv
 
 ### 3. Install Dependencies
 ```bash
-pip install django djangorestframework django-cors-headers google-genai openai python-dotenv requests
+pip install django djangorestframework django-cors-headers google-genai openai python-dotenv requests django-q2 pydantic
 ```
 
 ### 4. Configure Environment Variables
@@ -127,21 +139,22 @@ NVIDIA_API_KEY=your_nvidia_nim_key
 OPENROUTER_API_KEY=your_openrouter_key
 ```
 
-### 5. Apply Migrations & Start Server
+### 5. Apply Migrations
+Initialize database tables for Django Q and APIs:
 ```bash
 python manage.py makemigrations apis
 python manage.py migrate
+```
+
+### 6. Start the Background Task Cluster (New Terminal Window)
+```bash
+python manage.py qcluster
+```
+
+### 7. Start Django Server
+```bash
 python manage.py runserver
 ```
 
-### 6. Run the Frontend
-Simply double-click `Frontend/index.html` to open it in your browser, or serve it using any local static web server. Submit a prompt and watch the multi-agent network collaborate!
-
----
-
-## 📈 Key Concepts & Engineering Challenges
-
-1.  **Polymorphism in LLM APIs:** By designing an abstract `BaseAgent` class, all model integrations (Google GenAI SDK vs. OpenAI HTTP standard client) are represented identically, making the orchestrator completely decoupled from client implementation details.
-2.  **State Consistency & Cascades:** Implemented a robust 1-to-many relationship where model responses are bound to their parent question using Django's ORM, leveraging `related_name='responses'` to support nested JSON serialization natively.
-3.  **Structured JSON Outputs:** Configured system instructions and model schemas to enforce JSON responses from LLM evaluations, writing custom regex cleaning utilities to bypass markdown code blocks returned by various providers.
-4.  **CORS & Browser Security:** Configured Cross-Origin Resource Sharing (CORS) middle-layers in Django to safely expose the REST endpoints to a decoupled HTML file.
+### 8. Run the Frontend
+Simply double-click `Frontend/index.html` to open it in your browser. Submit a prompt and watch the multi-agent network think and collaborate in real-time!
