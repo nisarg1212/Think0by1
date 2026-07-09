@@ -38,7 +38,7 @@ class GraphEngine:
 
             # Trigger Start Callback
             if on_node_start:
-                on_node_start(current_node, state)
+                await on_node_start(current_node, state)
 
             context.logger.info(f"Executing node: {current_node}")
             start_time = time.time()
@@ -58,7 +58,7 @@ class GraphEngine:
 
             # Trigger End Callback
             if on_node_end:
-                on_node_end(current_node, state)
+                await on_node_end(current_node, state)
 
             # Routing Logic
             if current_node in self.graph.conditional_edges:

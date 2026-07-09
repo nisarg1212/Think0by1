@@ -73,11 +73,8 @@ class OrchestrationGraph:
         _db_response_cache.clear()
 
         # Define DB persistence callbacks to keep nodes and engine completely pure
-        def handle_node_end(node_name: str, state: OrchestrationState):
-            # We run these DB operations synchronously using sync_to_async under the hood
-            # as they are triggered in the async engine loop.
-            import asyncio
-            asyncio.create_task(self._persist_node_state(node_name, state, question))
+        async def handle_node_end(node_name: str, state: OrchestrationState):
+            await self._persist_node_state(node_name, state, question)
 
         # 3. Execute Engine
         return await self.engine.execute(
