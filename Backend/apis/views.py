@@ -10,10 +10,12 @@ class QuestionViewSet(viewsets.ModelViewSet):
         # 1. Save the new Question to the database
         question = serializer.save()
 
-        # 2. Trigger the multi-agent peer review orchestration
-        from apis.services.orchestrator import AgentOrchestrator
-        orchestrator = AgentOrchestrator()
-        orchestrator.run(question.id)
+        # 2. Trigger the multi-agent peer review orchestration in the background
+        from django_q.tasks import async_task
+        from apis.tasks import run_orchestration_task
+        
+        # Offload to Django Q2 worker, returns immediately
+        task_id = async_task(run_orchestration_task, question.id)
 
 
 class ModelResponseViewSet(viewsets.ModelViewSet):

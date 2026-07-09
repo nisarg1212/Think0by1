@@ -17,7 +17,7 @@ class OpenRouterAgent(BaseAgent):
         """
         Queries an OpenRouter hosted model (default: google/gemma-2-9b-it:free).
         """
-        model = kwargs.get("model", "openrouter/owl-alpha")
+        model = kwargs.get("model", "openrouter/free")
         response = self.client.chat.completions.create(
             model=model,
             messages=[

@@ -129,6 +129,7 @@
 
     <script>
         const API_BASE = "http://127.0.0.1:8000/api";
+        let pollingInterval = null;
 
         // Fetch and render the list of questions
         async function fetchQuestions() {
@@ -143,8 +144,16 @@
                 }
 
                 listDiv.innerHTML = "";
+                let hasPending = false;
+
                 data.forEach(q => {
                     let responsesHTML = "";
+                    const isPending = !q.final_answer;
+                    
+                    if (isPending) {
+                        hasPending = true;
+                    }
+
                     if (q.responses && q.responses.length > 0) {
                         responsesHTML = `<div class="responses-list"><strong>Model Answers:</strong>`;
                         q.responses.forEach(resp => {
@@ -158,18 +167,40 @@
                         });
                         responsesHTML += `</div>`;
                     } else {
-                        responsesHTML = `<p style="margin-left: 20px; font-style: italic; color: #777;">No responses generated yet.</p>`;
+                        responsesHTML = `<p style="margin-left: 20px; font-style: italic; color: #777;">
+                            ${isPending ? 'Agents are drafting initial ideas...' : 'No responses generated.'}
+                        </p>`;
                     }
+
+                    const statusHTML = isPending 
+                        ? `<span style="color: #e67e22; font-weight: bold; animation: flash 1.5s infinite;">Thinking...</span>`
+                        : `Completed`;
 
                     const item = document.createElement("div");
                     item.className = "question-item";
                     item.innerHTML = `
                         <h3>Question #${q.id}: ${q.prompt}</h3>
-                        <p><strong>Critique:</strong> ${q.critique || 'None'} | <strong>Final Answer:</strong> ${q.final_answer || 'None'}</p>
+                        <p><strong>Status:</strong> ${statusHTML}</p>
+                        <p><strong>Critique:</strong> ${q.critique || (isPending ? 'Waiting for peer reviews...' : 'None')} | <strong>Final Answer:</strong> ${q.final_answer || (isPending ? 'Synthesizing answers...' : 'None')}</p>
                         ${responsesHTML}
                     `;
                     listDiv.appendChild(item);
                 });
+
+                // Start/Stop auto-polling based on whether there are pending tasks
+                if (hasPending) {
+                    if (!pollingInterval) {
+                        pollingInterval = setInterval(fetchQuestions, 3000);
+                        console.log("Started polling for pending questions...");
+                    }
+                } else {
+                    if (pollingInterval) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        console.log("Stopped polling (all questions complete).");
+                    }
+                }
+
             } catch (error) {
                 listDiv.innerHTML = `<p style="color: red;">Error connecting to API: ${error.message}</p>`;
             }
@@ -200,7 +231,7 @@
 
                 if (response.ok) {
                     promptInput.value = ""; // Clear input
-                    fetchQuestions(); // Refresh list
+                    fetchQuestions(); // Refresh list immediately and start polling
                 } else {
                     const errData = await response.json();
                     alert("Error: " + JSON.stringify(errData));
@@ -213,6 +244,12 @@
         // Initial fetch when page loads
         fetchQuestions();
     </script>
+    <style>
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
 </body>
 
 </html>

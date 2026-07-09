@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # 3rd party
     'rest_framework',
     'corsheaders',
+    'django_q',
 
     #
     'apis'
@@ -132,3 +133,18 @@ STATIC_URL = 'static/'
 
 # CORS Configuration - Allow all origins for local development
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Django Q2 Configuration
+Q_CLUSTER = {
+    'name': 'think0by1_cluster',
+    'workers': 4,
+    'recycle': 500,
+    'timeout': 300,  # 5 minutes timeout for long LLM queries
+    'compress': True,
+    'save_limit': 250,
+    'queue_limit': 500,
+    'cpu_affinity': 1,
+    'label': 'Django Q',
+    'orm': 'default'  # Use Django ORM as the broker
+}
+

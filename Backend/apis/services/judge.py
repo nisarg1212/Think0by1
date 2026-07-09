@@ -1,4 +1,8 @@
 import json
+import logging
+from apis.schemas import PeerReviewResult
+
+logger = logging.getLogger(__name__)
 
 class ResponseJudge:
     def peer_evaluate(self, reviewer_agent, reviewer_name: str, prompt: str, draft_text: str) -> tuple[float, str]:
@@ -35,29 +39,41 @@ class ResponseJudge:
             # Query the reviewer agent using its generic .query() method
             response_string = reviewer_agent.query(judge_prompt)
             
-            # Parse and return score and critique
+            # Parse and validate with Pydantic
             return self._parse_json_response(response_string)
             
         except Exception as e:
+            logger.error(f"Peer review by {reviewer_name} failed: {e}")
             return 0.0, f"Peer review by {reviewer_name} failed: {str(e)}"
 
     def _parse_json_response(self, text: str) -> tuple[float, str]:
         """
-        Helper method to clean and parse JSON from LLM outputs,
-        handling cases where LLMs include markdown formatting (like ```json).
+        Cleans the response text, parses it as JSON, and validates it using Pydantic.
         """
         cleaned_text = text.strip()
         
-        # Strip markdown json block delimiters if present
+        # Clean markdown code block markers if present
         if "```json" in cleaned_text:
             cleaned_text = cleaned_text.split("```json")[1].split("```")[0].strip()
         elif "```" in cleaned_text:
             cleaned_text = cleaned_text.split("```")[1].split("```")[0].strip()
             
         try:
-            data = json.loads(cleaned_text)
-            score = float(data.get("score", 0.0))
-            critique = data.get("critique", "No critique provided.")
-            return score, critique
+            # Pydantic validation guarantees correct types and constraints
+            result = PeerReviewResult.model_validate_json(cleaned_text)
+            return result.score, result.critique
         except Exception as e:
-            return 0.0, f"Could not parse peer review JSON: {text}"
+            logger.warning(f"Structured JSON validation failed. Attempting lenient fallback. Error: {e}")
+            
+            # Lenient fallback in case of schema validation warnings (e.g. float as string)
+            try:
+                data = json.loads(cleaned_text)
+                # Coerce score to float, default to 0.0 if not found
+                score = float(data.get("score", 0.0))
+                # Bound check the fallback
+                score = max(0.0, min(10.0, score))
+                critique = str(data.get("critique", "No critique provided."))
+                return score, critique
+            except Exception as inner_e:
+                logger.error(f"Lenient fallback also failed. Text was: {text}. Error: {inner_e}")
+                return 0.0, f"Failed to parse peer review JSON: {text}"
