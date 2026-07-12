@@ -140,6 +140,7 @@ Q_CLUSTER = {
     'workers': 4,
     'recycle': 500,
     'timeout': 300,  # 5 minutes timeout for long LLM queries
+    'retry': 360,    # Set larger than timeout to prevent premature task retriggering
     'compress': True,
     'save_limit': 250,
     'queue_limit': 500,
